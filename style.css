@@ -239,3 +239,25 @@ footer {
   .module-card { min-height: 210px; }
   footer { flex-direction: column; gap: 7px; }
 }
+.scada-down-list {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+}
+.scada-down-list .down-label {
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.down-chip {
+  background: rgba(229, 72, 77, 0.15);
+  color: #e5484d;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: Consolas, monospace;
+  font-weight: 600;
+}
