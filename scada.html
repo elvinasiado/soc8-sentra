@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOC8 SCADA Fault Monitor</title>
+<style>
+  :root{
+    --bg:        #0a0c10;
+    --panel:     #12151c;
+    --panel-2:   #171b24;
+    --border:    #232836;
+    --text:      #dde1e8;
+    --text-dim:  #7d8494;
+    --text-faint:#4b5162;
+    --accent:    #5aa9e6;
+    --red:       #e5484d;
+    --red-dim:   #3a1e22;
+    --amber:     #f2a13a;
+    --amber-dim: #3a2c17;
+    --green:     #35c46a;
+    --green-dim: #16301f;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    padding:20px 24px 60px;
+    min-height:100vh;
+  }
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:20px;
+    padding-bottom:16px;
+    border-bottom:1px solid var(--border);
+  }
+  header h1{
+    font-size:19px;
+    font-weight:600;
+    letter-spacing:0.2px;
+  }
+  header .sub{
+    font-size:12.5px;
+    color:var(--text-dim);
+    margin-top:3px;
+  }
+  #conn{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12.5px;
+    color:var(--text-dim);
+    font-family:var(--mono);
+  }
+  #conn .dot{
+    width:8px; height:8px; border-radius:50%;
+    background:var(--text-faint);
+    transition:background .3s;
+  }
+  #conn .dot.ok{background:var(--green); box-shadow:0 0 6px var(--green);}
+  #conn .dot.bad{background:var(--red); box-shadow:0 0 6px var(--red);}
+
+  /* line filter dropdown */
+  #line-filter{position:relative;}
+  #line-filter-btn{
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:12.5px;
+    padding:7px 12px;
+    border-radius:5px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  #line-filter-btn:hover{border-color:var(--accent);}
+  #line-filter-btn .chev{color:var(--text-faint); font-size:10px;}
+  #line-filter-panel{
+    display:none;
+    position:absolute;
+    top:calc(100% + 6px);
+    right:0;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:10px;
+    min-width:180px;
+    max-height:280px;
+    overflow-y:auto;
+    z-index:20;
+    box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  #line-filter-panel.open{display:block;}
+  #line-filter-panel .lf-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:5px 4px;
+    font-size:13px;
+    cursor:pointer;
+    border-radius:3px;
+  }
+  #line-filter-panel .lf-row:hover{background:var(--panel);}
+  #line-filter-panel .lf-row input{accent-color:var(--accent);}
+  #line-filter-panel .lf-all{
+    border-bottom:1px solid var(--border);
+    margin-bottom:6px;
+    padding-bottom:8px;
+    font-weight:600;
+    color:var(--text-dim);
+  }
+
+  .cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+    gap:12px;
+    margin-bottom:18px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:16px 18px;
+  }
+  .card .num{
+    font-size:32px;
+    font-weight:700;
+    font-family:var(--mono);
+    line-height:1;
+  }
+  .card .label{
+    font-size:12px;
+    color:var(--text-dim);
+    margin-top:8px;
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+  }
+  .card.active .num{color:var(--red);}
+  .card.resolved .num{color:var(--green);}
+  .card.total .num{color:var(--accent);}
+  .card.rate .num{color:var(--text);}
+
+  .grid-2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-bottom:18px;
+  }
+  @media (max-width:820px){ .grid-2{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:18px;
+  }
+  .panel h2{
+    font-size:13px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    font-weight:600;
+    margin-bottom:14px;
+  }
+
+  #donut-wrap{
+    display:flex;
+    align-items:center;
+    gap:20px;
+  }
+  #legend{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    font-size:13px;
+  }
+  #legend .row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:var(--text-dim);
+  }
+  #legend .sw{width:10px; height:10px; border-radius:2px; flex-shrink:0;}
+  #legend .name{flex:1; color:var(--text);}
+  #legend .count{font-family:var(--mono); color:var(--text-dim);}
+
+  #status-bars{display:flex; flex-direction:column; gap:12px;}
+  .sbar-row{display:flex; align-items:center; gap:10px;}
+  .sbar-label{width:130px; font-size:12.5px; color:var(--text-dim); font-family:var(--mono); flex-shrink:0;}
+  .sbar-track{flex:1; height:14px; background:var(--panel-2); border-radius:3px; overflow:hidden;}
+  .sbar-fill{height:100%; border-radius:3px; transition:width .4s;}
+  .sbar-count{width:30px; text-align:right; font-family:var(--mono); font-size:12.5px; color:var(--text);}
+
+  #empty-active{color:var(--text-faint); font-size:13px; padding:20px 0; text-align:center;}
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  th{
+    text-align:left;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color:var(--text-faint);
+    font-weight:600;
+    padding:8px 10px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  td{
+    padding:9px 10px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+    color:var(--text);
+  }
+  tr:last-child td{border-bottom:none;}
+  tr.row-active{background:rgba(229,72,77,0.06);}
+  .pill{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:3px;
+    font-size:11px;
+    font-family:var(--mono);
+    font-weight:600;
+  }
+  .pill.active-pill{background:var(--red-dim); color:var(--red);}
+  .pill.resolved-pill{background:var(--green-dim); color:var(--green);}
+  .dur-active{color:var(--red); font-family:var(--mono);}
+  .dur-resolved{color:var(--green); font-family:var(--mono);}
+  .table-scroll{overflow-x:auto;}
+
+  footer{
+    margin-top:20px;
+    font-size:11.5px;
+    color:var(--text-faint);
+    font-family:var(--mono);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>SOC8 SCADA Fault Monitor</h1>
+    <div class="sub">Live conveyor / sorter sensor fault status, from the SCADA alert log</div>
+  </div>
+  <div style="display:flex; align-items:center; gap:14px;">
+    <div id="line-filter">
+      <button id="line-filter-btn" onclick="toggleLineFilterPanel()">
+        <span id="line-filter-label">All lines</span>
+        <span class="chev">▾</span>
+      </button>
+      <div id="line-filter-panel"></div>
+    </div>
+    <div id="conn"><span class="dot" id="conn-dot"></span><span id="conn-text">connecting…</span></div>
+  </div>
+</header>
+
+<div class="cards">
+  <div class="card active">
+    <div class="num" id="stat-active">–</div>
+    <div class="label">Active faults</div>
+  </div>
+  <div class="card resolved">
+    <div class="num" id="stat-resolved">–</div>
+    <div class="label">Resolved today</div>
+  </div>
+  <div class="card total">
+    <div class="num" id="stat-total">–</div>
+    <div class="label">Logged today</div>
+  </div>
+  <div class="card rate">
+    <div class="num" id="stat-rate">–</div>
+    <div class="label">Cleared rate today</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>Active faults by line</h2>
+    <div id="donut-wrap">
+      <svg id="donut" width="140" height="140" viewBox="0 0 140 140"></svg>
+      <div id="legend"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Active faults by severity</h2>
+    <div id="status-bars"></div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Fault detail — active &amp; recently cleared</h2>
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr>
+        <th>State</th>
+        <th>Line</th>
+        <th>Sensor</th>
+        <th>Display Name</th>
+        <th>Severity</th>
+        <th>Note</th>
+        <th>Started</th>
+        <th>Elapsed / Duration</th>
+      </tr>
+    </thead>
+    <tbody id="detail-body"></tbody>
+  </table>
+  </div>
+  <div id="empty-active" style="display:none;">No active or recently cleared faults.</div>
+</div>
+
+<footer id="footer-info">—</footer>
+
+<script>
+// ── API base URL (empty = same server that serves this page) ──
+const API_BASE_URL = "https://race-del-replies-microwave.trycloudflare.com";
+const REFRESH_MS = 15000;
+
+// ── Fixed severity color palette (matches Python bot's severity emojis) ──
+const SEV_COLORS = {
+  "EMERGENCY_STOP": "#e5484d",
+  "POWER_FAIL":     "#b98af0",
+  "STOPPED":        "#e5484d",
+  "HIGH":           "#f2a13a",
+  "COMM_FAIL":      "#6c757d",
+  "FAULT":          "#f2a13a",
+  "WARNING":        "#f2a13a",
+  "JAM":            "#5aa9e6",
+  "LOCAL":          "#35c46a",
+  "LOCAL_STOP":     "#8fa8ff",
+  "REJECT_FULL":    "#e5484d",
+  "REJECT_JAM":     "#e5484d",
+  "ALERT":          "#5aa9e6"
+};
+
+const CATEGORY_PALETTE = ["#5aa9e6", "#e5484d", "#f2a13a", "#35c46a", "#b98af0", "#4ad4c4", "#e879c4", "#8fa8ff", "#ffd166", "#06d6a0"];
+const lineColorMap = {};
+
+// Human-readable labels, matching the emoji names used in scada.py's own
+// alert/hourly-summary messages — e.g. "STOPPED" should read as "Blockage"
+// everywhere on the dashboard, not the raw internal severity code.
+const SEV_LABELS = {
+  "EMERGENCY_STOP": "Emergency Stop",
+  "POWER_FAIL":      "Power Failure",
+  "STOPPED":         "Blockage",
+  "HIGH":            "Unexpected Stop",
+  "COMM_FAIL":       "Comm Failed",
+  "FAULT":           "Fault",
+  "WARNING":         "Warning",
+  "JAM":             "Blockage",
+  "LOCAL":           "Local Run",
+  "LOCAL_STOP":      "Local Stop",
+  "REJECT_FULL":     "Reject Full",
+  "REJECT_JAM":      "Reject Jam",
+  "ALERT":           "Alert",
+};
+function sevLabel(status){ return SEV_LABELS[status] || status || "—"; }
+const sevColorMap = {};
+function colorFor(map, key){
+  key = key || "Unknown";
+  if (!(key in map)) {
+    map[key] = CATEGORY_PALETTE[Object.keys(map).length % CATEGORY_PALETTE.length];
+  }
+  return map[key];
+}
+
+let liveRows = [];
+let lastData = null;
+const knownLines = new Set();
+const selectedLines = new Set();
+
+function toggleLineFilterPanel(){
+  document.getElementById("line-filter-panel").classList.toggle("open");
+}
+document.addEventListener("click", (e)=>{
+  const wrap = document.getElementById("line-filter");
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById("line-filter-panel").classList.remove("open");
+  }
+});
+
+function toggleLine(line){
+  if (selectedLines.has(line)) selectedLines.delete(line);
+  else selectedLines.add(line);
+  rebuildLineFilterPanel();
+  updateLineFilterLabel();
+  if (lastData) applyFilterAndRender(lastData);
+}
+
+function clearLineFilter(){
+  selectedLines.clear();
+  rebuildLineFilterPanel();
+  updateLineFilterLabel();
+  if (lastData) applyFilterAndRender(lastData);
+}
+
+function updateLineFilterLabel(){
+  const label = document.getElementById("line-filter-label");
+  if (selectedLines.size === 0) label.textContent = "All lines";
+  else if (selectedLines.size === 1) label.textContent = [...selectedLines][0];
+  else label.textContent = `${selectedLines.size} lines`;
+}
+
+function rebuildLineFilterPanel(){
+  const panel = document.getElementById("line-filter-panel");
+  panel.innerHTML = "";
+
+  const allRow = document.createElement("div");
+  allRow.className = "lf-row lf-all";
+  allRow.innerHTML = `<input type="checkbox" ${selectedLines.size===0 ? "checked" : ""} /> <span>All lines</span>`;
+  allRow.onclick = (e)=>{ e.preventDefault(); clearLineFilter(); };
+  panel.appendChild(allRow);
+
+  if (knownLines.size === 0){
+    const empty = document.createElement("div");
+    empty.style.cssText = "color:var(--text-faint); font-size:12px; padding:4px;";
+    empty.textContent = "No lines seen yet";
+    panel.appendChild(empty);
+    return;
+  }
+
+  [...knownLines].sort().forEach(line=>{
+    const row = document.createElement("div");
+    row.className = "lf-row";
+    const checked = selectedLines.has(line) ? "checked" : "";
+    row.innerHTML = `<input type="checkbox" ${checked} /> <span>${line}</span>`;
+    row.onclick = (e)=>{ e.preventDefault(); toggleLine(line); };
+    panel.appendChild(row);
+  });
+}
+
+function fmtElapsed(sec){
+  sec = Math.max(0, Math.floor(sec));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  if (h) return `${h}h${String(m).padStart(2,'0')}m`;
+  if (m) return `${m}m${String(s).padStart(2,'0')}s`;
+  return `${s}s`;
+}
+
+function setConn(ok, text){
+  const dot = document.getElementById("conn-dot");
+  dot.classList.remove("ok","bad");
+  dot.classList.add(ok ? "ok" : "bad");
+  document.getElementById("conn-text").textContent = text;
+}
+
+function renderDonut(byLine){
+  const svg = document.getElementById("donut");
+  const legend = document.getElementById("legend");
+  svg.innerHTML = "";
+  legend.innerHTML = "";
+
+  const entries = Object.entries(byLine).sort((a,b)=>b[1]-a[1]);
+  const total = entries.reduce((s,[,v])=>s+v, 0);
+
+  if (total === 0){
+    svg.innerHTML = `<circle cx="70" cy="70" r="55" fill="none" stroke="#232836" stroke-width="18" />`;
+    legend.innerHTML = `<div class="row"><span class="name">No active faults</span></div>`;
+    return;
+  }
+
+  const r = 55, cx = 70, cy = 70, circumference = 2*Math.PI*r;
+  let offset = 0;
+  entries.forEach(([line, count])=>{
+    const frac = count/total;
+    const dash = frac*circumference;
+    const color = colorFor(lineColorMap, line);
+    const circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    circle.setAttribute("cx", cx); circle.setAttribute("cy", cy); circle.setAttribute("r", r);
+    circle.setAttribute("fill", "none");
+    circle.setAttribute("stroke", color);
+    circle.setAttribute("stroke-width", "18");
+    circle.setAttribute("stroke-dasharray", `${dash} ${circumference-dash}`);
+    circle.setAttribute("stroke-dashoffset", -offset);
+    circle.setAttribute("transform", `rotate(-90 ${cx} ${cy})`);
+    svg.appendChild(circle);
+    offset += dash;
+
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<span class="sw" style="background:${color}"></span>
+                      <span class="name">${line}</span>
+                      <span class="count">${count}</span>`;
+    legend.appendChild(row);
+  });
+
+  const centerText = document.createElementNS("http://www.w3.org/2000/svg","text");
+  centerText.setAttribute("x", cx); centerText.setAttribute("y", cy+5);
+  centerText.setAttribute("text-anchor", "middle");
+  centerText.setAttribute("fill", "#dde1e8");
+  centerText.setAttribute("font-size", "22");
+  centerText.setAttribute("font-weight", "700");
+  centerText.textContent = total;
+  svg.appendChild(centerText);
+}
+
+function renderSeverityBars(byStatus){
+  const wrap = document.getElementById("status-bars");
+  wrap.innerHTML = "";
+  const entries = Object.entries(byStatus).sort((a,b)=>b[1]-a[1]);
+  if (entries.length === 0){
+    wrap.innerHTML = `<div id="empty-active" style="display:block;">No active faults</div>`;
+    return;
+  }
+  const max = Math.max(...entries.map(([,v])=>v));
+  entries.forEach(([status, count])=>{
+    const color = SEV_COLORS[status] || colorFor(sevColorMap, status);
+    const pct = Math.max(6, (count/max)*100);
+    const row = document.createElement("div");
+    row.className = "sbar-row";
+    row.innerHTML = `
+      <div class="sbar-label"><span class="sw" style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color};margin-right:6px;"></span>${sevLabel(status)}</div>
+      <div class="sbar-track"><div class="sbar-fill" style="width:${pct}%; background:${color}"></div></div>
+      <div class="sbar-count">${count}</div>`;
+    wrap.appendChild(row);
+  });
+}
+
+function renderTable(rows){
+  const body = document.getElementById("detail-body");
+  const empty = document.getElementById("empty-active");
+  body.innerHTML = "";
+
+  if (rows.length === 0){
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  rows.forEach(r=>{
+    const tr = document.createElement("tr");
+    tr.className = r.is_active ? "row-active" : "";
+    tr.dataset.started = r.started_epoch || "";
+    tr.dataset.active = r.is_active ? "1" : "0";
+
+    const statePill = r.is_active
+      ? `<span class="pill active-pill">ACTIVE</span>`
+      : `<span class="pill resolved-pill">CLEARED</span>`;
+    const sevColor = SEV_COLORS[r.status] || colorFor(sevColorMap, r.status);
+    const durClass = r.is_active ? "dur-active" : "dur-resolved";
+
+    tr.innerHTML = `
+      <td>${statePill}</td>
+      <td>${r.line || "—"}</td>
+      <td>${r.sensor_id || "—"}</td>
+      <td>${r.display_name || "—"}</td>
+      <td><span class="pill" style="background:${sevColor}22; color:${sevColor}">${sevLabel(r.status)}</span></td>
+      <td>${r.note || "—"}</td>
+      <td>${r.date} ${r.time}</td>
+      <td class="${durClass}" data-elapsed>${r.elapsed_display || "—"}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+function applyFilterAndRender(data){
+  const filterActive = selectedLines.size > 0;
+  const allRows = data.table_rows || [];
+  const rows = filterActive ? allRows.filter(r => selectedLines.has(r.line)) : allRows;
+
+  const activeRows = rows.filter(r => r.is_active);
+  document.getElementById("stat-active").textContent = filterActive ? activeRows.length : data.active_count;
+
+  const byLine = {};
+  const byStatus = {};
+  activeRows.forEach(r=>{
+    byLine[r.line || "Unknown"] = (byLine[r.line || "Unknown"] || 0) + 1;
+    byStatus[r.status || "UNKNOWN"] = (byStatus[r.status || "UNKNOWN"] || 0) + 1;
+  });
+
+  renderDonut(filterActive ? byLine : (data.by_line || {}));
+  renderSeverityBars(filterActive ? byStatus : (data.by_status || {}));
+
+  const sortedRows = [...rows].sort((a, b) => {
+    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+    return (b.started_epoch || 0) - (a.started_epoch || 0);
+  });
+
+  renderTable(sortedRows);
+  liveRows = sortedRows;
+}
+
+async function refresh(){
+  try{
+    const res = await fetch(`${API_BASE_URL}/api/summary`, {cache:"no-store"});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    lastData = data;
+
+    if (Array.isArray(data.known_lines) && data.known_lines.length > 0) {
+      data.known_lines.forEach(l => knownLines.add(l));
+    }
+    (data.table_rows || []).forEach(r => { if (r.line) knownLines.add(r.line); });
+    rebuildLineFilterPanel();
+
+    document.getElementById("stat-resolved").textContent = data.resolved_today_count;
+    document.getElementById("stat-total").textContent = data.total_today_count;
+    const rate = data.total_today_count > 0
+      ? Math.round((data.resolved_today_count / data.total_today_count) * 100) + "%"
+      : "—";
+    document.getElementById("stat-rate").textContent = rate;
+
+    applyFilterAndRender(data);
+
+    const computedAt = data.computed_at ? new Date(data.computed_at * 1000).toLocaleTimeString() : "—";
+    const sourceLabel = data.data_source === "live"
+      ? "🟢 live from scada.py"
+      : "🟡 Sheet fallback (scada.py live endpoint unreachable)";
+    document.getElementById("footer-info").textContent =
+      `${sourceLabel} · updated ${computedAt} · refreshing every ${REFRESH_MS/1000}s`;
+
+    setConn(true, `live · updated ${new Date().toLocaleTimeString()}`);
+  } catch(err){
+    console.error("refresh failed:", err);
+    setConn(false, `connection lost — retrying`);
+  }
+}
+
+// tick active-row elapsed timers every second between polls
+setInterval(()=>{
+  document.querySelectorAll("tr[data-active='1']").forEach(tr=>{
+    const started = parseFloat(tr.dataset.started);
+    if (!started) return;
+    const cell = tr.querySelector("[data-elapsed]");
+    if (cell) cell.textContent = fmtElapsed(Date.now()/1000 - started);
+  });
+}, 1000);
+
+refresh();
+setInterval(refresh, REFRESH_MS);
+</script>
+
+</body>
+</html>
