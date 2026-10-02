@@ -31,7 +31,12 @@ function showToast(message) {
 // ── Module card clicks ─────────────────────────────────────────────────
 document.querySelectorAll(".module-card").forEach(card => {
   card.addEventListener("click", () => {
-    showToast(`${card.dataset.module} — module ready for integration.`);
+    const mod = card.dataset.module;
+    if (mod === "SCADA Monitor") {
+      window.location.href = "scada.html";
+      return;
+    }
+    showToast(`${mod} — module ready for integration.`);
   });
 });
 
@@ -55,6 +60,25 @@ async function loadScada() {
     const statusEl = document.getElementById("overallStatus");
     if (statusEl) {
       statusEl.textContent = down === 0 ? "ONLINE" : `${down} FAULT${down > 1 ? "S" : ""}`;
+    }
+
+    // Render the names of currently faulted lines as chips
+    const faultedNames = Object.keys(data.by_line || {}).sort();
+    const listEl  = document.getElementById("scadaDownList");
+    const chipsEl = document.getElementById("scadaDownChips");
+    if (listEl && chipsEl) {
+      chipsEl.innerHTML = "";
+      if (faultedNames.length === 0) {
+        listEl.hidden = true;
+      } else {
+        listEl.hidden = false;
+        faultedNames.forEach(line => {
+          const chip = document.createElement("span");
+          chip.className = "down-chip";
+          chip.textContent = line;
+          chipsEl.appendChild(chip);
+        });
+      }
     }
 
     const updateEl = document.getElementById("lastUpdate");
