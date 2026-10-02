@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOC 8 SENTRA | Operations Center</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">8</div>
+        <div>
+          <div class="brand-title">SOC 8 SENTRA</div>
+          <div class="brand-subtitle">OPERATIONS CENTER</div>
+        </div>
+      </div>
+      <div class="top-status">
+        <span class="status-dot online"></span>
+        <span>V1 DEMO</span>
+        <span class="divider"></span>
+        <span id="clock">--:--:--</span>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">SOC OPERATIONS</p>
+          <h1>Monitoring Dashboard</h1>
+          <p class="hero-text">Central view for SCADA, Reject Monitoring, WCS and operational reporting.</p>
+        </div>
+        <div class="system-pill">
+          <span class="status-dot online"></span>
+          <div>
+            <strong>ALL SYSTEMS</strong>
+            <small id="overallStatus">ONLINE</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="kpi-grid">
+        <article class="kpi-card">
+          <div class="kpi-icon">⚙</div>
+          <div>
+            <span class="kpi-label">SCADA</span>
+            <strong>ONLINE</strong>
+            <small>Machine monitoring</small>
+          </div>
+          <span class="badge good">READY</span>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-icon">▣</div>
+          <div>
+            <span class="kpi-label">REJECT BOT</span>
+            <strong>ONLINE</strong>
+            <small>Hourly reject monitoring</small>
+          </div>
+          <span class="badge good">READY</span>
+        </article>
+
+        <article class="kpi-card">
+          <div class="kpi-icon">◈</div>
+          <div>
+            <span class="kpi-label">WCS BOT</span>
+            <strong>ONLINE</strong>
+            <small>Parcel data monitoring</small>
+          </div>
+          <span class="badge good">READY</span>
+        </article>
+      </section>
+
+      <section class="section-head">
+        <div>
+          <p class="eyebrow">MODULES</p>
+          <h2>Operations</h2>
+        </div>
+        <span class="last-update">Last update: <strong id="lastUpdate">--:--:--</strong></span>
+      </section>
+
+      <section class="module-grid">
+        <button class="module-card" data-module="SCADA Monitor">
+          <div class="module-top">
+            <div class="module-icon scada">⚙</div>
+            <span class="arrow">↗</span>
+          </div>
+          <h3>SCADA Monitor</h3>
+          <p>Machine status, running lines, faults and downtime.</p>
+          <div class="module-metric">
+            <span>Running</span><strong id="scadaRunning">8</strong>
+            <span>Down</span><strong id="scadaDown">1</strong>
+          </div>
+        </button>
+
+        <button class="module-card" data-module="Reject Monitor">
+          <div class="module-top">
+            <div class="module-icon reject">!</div>
+            <span class="arrow">↗</span>
+          </div>
+          <h3>Reject Monitor</h3>
+          <p>Hourly reject rate and real-time alert status.</p>
+          <div class="module-metric">
+            <span>Reject Rate</span><strong id="rejectRate">1.24%</strong>
+            <span>Status</span><strong class="text-good">NORMAL</strong>
+          </div>
+        </button>
+
+        <button class="module-card" data-module="WCS Monitor">
+          <div class="module-top">
+            <div class="module-icon wcs">◇</div>
+            <span class="arrow">↗</span>
+          </div>
+          <h3>WCS Monitor</h3>
+          <p>Parcel information, WCS data and extraction status.</p>
+          <div class="module-metric">
+            <span>Parcels</span><strong id="parcelCount">125,432</strong>
+            <span>Extractor</span><strong class="text-good">READY</strong>
+          </div>
+        </button>
+
+        <button class="module-card" data-module="Incident Report">
+          <div class="module-top">
+            <div class="module-icon report">+</div>
+            <span class="arrow">↗</span>
+          </div>
+          <h3>Incident Report</h3>
+          <p>Create an operational report for a machine or process issue.</p>
+          <div class="module-action">Open reporting module →</div>
+        </button>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">BOT STATUS</p>
+              <h2>Automation Services</h2>
+            </div>
+            <span class="live-label"><span class="status-dot online"></span> LIVE</span>
+          </div>
+
+          <div class="bot-row">
+            <div class="bot-avatar">S</div>
+            <div class="bot-info">
+              <strong>SCADADOO</strong>
+              <small>SCADA monitoring bot</small>
+            </div>
+            <span class="service-status">ONLINE</span>
+          </div>
+
+          <div class="bot-row">
+            <div class="bot-avatar">R</div>
+            <div class="bot-info">
+              <strong>REJECT BOT</strong>
+              <small>Reject rate monitoring</small>
+            </div>
+            <span class="service-status">ONLINE</span>
+          </div>
+
+          <div class="bot-row">
+            <div class="bot-avatar">S</div>
+            <div class="bot-info">
+              <strong>SUNDOT</strong>
+              <small>WCS parcel extractor</small>
+            </div>
+            <span class="service-status">ONLINE</span>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">ACTIVITY</p>
+              <h2>System Events</h2>
+            </div>
+          </div>
+          <div class="event-list" id="eventList">
+            <div class="event">
+              <span class="event-dot good"></span>
+              <div><strong>SCADA service ready</strong><small>V1 demo service initialized</small></div>
+              <time>Now</time>
+            </div>
+            <div class="event">
+              <span class="event-dot good"></span>
+              <div><strong>Reject monitoring ready</strong><small>Waiting for live API integration</small></div>
+              <time>Now</time>
+            </div>
+            <div class="event">
+              <span class="event-dot info"></span>
+              <div><strong>SOC 8 Sentra started</strong><small>Dashboard running in V1 demo mode</small></div>
+              <time>Now</time>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      <span>SOC 8 SENTRA</span>
+      <span>V1.0 • Operations Dashboard</span>
+      <span>Built for SOC 8 Automation</span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="script.js"></script>
+</body>
+</html>
